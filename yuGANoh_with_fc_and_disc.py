@@ -84,16 +84,27 @@ class Discriminator(nn.Module):
                 similarity_features,
                 similarity_features,
                 num_features * 2),
-            requires_grad=True)
-        self.main = nn.Sequential(
-            # input is 3 x 64 x 64
+            requires_grad=True
+        )
+        self.feed_forward = nn.Sequential(
+            nn.Conv2d(3, disc_features, (5, 8), 2, 0,
+                      dilation=2, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(disc_features, disc_features * 2,
+                      6, 3, dilation=3, bias=False),
+            nn.BatchNorm2d(disc_features * 2),
+            nn.LeakyReLU(0.2, inplace=True)
+        )
+        self.main_feed = nn.Sequential(
             nn.Conv2d(3, disc_features, 8, (4, 3), 0, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
-            # state size. (disc_features) x 32 x 32
+            # state size. (disc_features) x 105 x 105
             nn.Conv2d(disc_features, disc_features * 2,
                       5, 3, (1, 2), bias=False),
             nn.BatchNorm2d(disc_features * 2),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.LeakyReLU(0.2, inplace=True)
+        )
+        self.main = nn.Sequential(
             # state size. (disc_features*2) x 16 x 16
             nn.Conv2d(disc_features * 2, disc_features * 4,
                       5, 3, 2, bias=False),
@@ -117,7 +128,8 @@ class Discriminator(nn.Module):
         :param images: Input image tensor. (batch_size,c,h,w)
         :return: label for CE loss and batch features for mean loss.
         """
-        features = self.main(images)
+
+        features = self.main(self.main_feed(images)+self.feed_forward(images))
         features = features.squeeze()
         if len(features.shape) == 1:
             features = features.unsqueeze(0)
