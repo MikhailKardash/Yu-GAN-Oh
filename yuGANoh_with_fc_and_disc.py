@@ -87,11 +87,11 @@ class Discriminator(nn.Module):
             requires_grad=True
         )
         self.feed_forward = nn.Sequential(
-            nn.Conv2d(3, disc_features, (5, 8), 2, 0,
+            nn.Conv2d(3, disc_features, (5, 9), 2,
                       dilation=2, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(disc_features, disc_features * 2,
-                      6, 3, dilation=3, bias=False),
+                      7, 3, dilation=(1, 2), bias=False),
             nn.BatchNorm2d(disc_features * 2),
             nn.LeakyReLU(0.2, inplace=True)
         )
@@ -106,7 +106,7 @@ class Discriminator(nn.Module):
         )
         self.main = nn.Sequential(
             # state size. (disc_features*2) x 16 x 16
-            nn.Conv2d(disc_features * 2, disc_features * 4,
+            nn.Conv2d(disc_features * 4, disc_features * 4,
                       5, 3, 2, bias=False),
             nn.BatchNorm2d(disc_features * 4),
             nn.LeakyReLU(0.2, inplace=True),
@@ -128,8 +128,14 @@ class Discriminator(nn.Module):
         :param images: Input image tensor. (batch_size,c,h,w)
         :return: label for CE loss and batch features for mean loss.
         """
-
-        features = self.main(self.main_feed(images)+self.feed_forward(images))
+        
+        features = self.main(
+            torch.cat(
+                    [self.main_feed(images),
+                    self.feed_forward(images[:,:,80:80+228+1,40:40+248+1])],
+                    axis = 1
+                )
+        )
         features = features.squeeze()
         if len(features.shape) == 1:
             features = features.unsqueeze(0)

@@ -131,3 +131,8 @@ ipython_config.py
 .idea/modules.xml
 .idea/vcs.xml
 .idea/Yu-GAN-Oh.iml
+disc22.pt
+disc22_loss_weight-dec_2.pt
+*.pt
+model_info.txt
+*.pyc
