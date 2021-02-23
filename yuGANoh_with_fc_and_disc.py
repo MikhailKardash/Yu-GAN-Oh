@@ -47,7 +47,9 @@ class Generator(nn.Module):
             nn.LeakyReLU(0.2, True),
             nn.ConvTranspose2d(gan_features, 3, (4, 5),
                                2, (3, 2), bias=False),
-            nn.Tanh()
+            nn.BatchNorm2d(3),
+            # nn.Tanh()
+            nn.Sigmoid()
             # state size. 3 x 64 x 64
         )
 
