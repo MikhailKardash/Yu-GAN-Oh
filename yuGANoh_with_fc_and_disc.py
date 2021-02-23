@@ -1,5 +1,6 @@
 import torch.nn as nn
 from torch.utils.data import Dataset
+from torch.nn.functional import pad
 import torch
 import os
 from PIL import Image
@@ -19,7 +20,7 @@ class Generator(nn.Module):
         :param gan_features: conv channel width factor.
         """
         super(Generator, self).__init__()
-        self.main = nn.Sequential(
+        self.initial_upscaling = nn.Sequential(
             # input is Z, going into a convolution
             nn.ConvTranspose2d(noise_channels, gan_features * 8,
                                (4, 3), 1, 0, bias=False),
@@ -30,6 +31,9 @@ class Generator(nn.Module):
                                5, 3, 2, bias=False),
             nn.BatchNorm2d(gan_features * 4),
             nn.LeakyReLU(0.2, True),
+        )
+
+        self.card = nn.Sequential(
             # state size. (gan_features*4) x 8 x 8
             nn.ConvTranspose2d(gan_features * 4, gan_features * 2,
                                5, 3, (3, 2), bias=False),
@@ -50,6 +54,29 @@ class Generator(nn.Module):
             nn.Tanh()
             # state size. 3 x 64 x 64
         )
+        
+        # need 228x248 output.
+        self.centerbox = nn.Sequential(
+            # state size. (gan_features*8) x 14 x 10
+            nn.ConvTranspose2d(gan_features * 4, gan_features * 4,
+                               (5, 8), (3, 4), 0, bias=False, dilation=2),
+            nn.BatchNorm2d(gan_features * 4),
+            nn.LeakyReLU(0.2, True),
+            # 36 x 39
+            nn.ConvTranspose2d(gan_features * 4, gan_features * 2,
+                               6, 3, 0, bias=False),
+            nn.BatchNorm2d(gan_features * 2),
+            nn.LeakyReLU(0.2, True),
+            # 111 x 120
+            nn.ConvTranspose2d(gan_features * 2, gan_features,
+                               (4, 5), 2, 0, bias=False),
+            nn.BatchNorm2d(gan_features),
+            nn.LeakyReLU(0.2, True),
+            # 224 x 243
+            nn.ConvTranspose2d(gan_features, 3, (5, 6),
+                               1, 0, bias=False),
+            nn.Tanh()
+            )
 
     def forward(self, noise):
         """
@@ -57,7 +84,18 @@ class Generator(nn.Module):
         The generator only needs to run through the main sequential.
         :param noise: Tensor of shape (batch_size,latent_size,1,1)
         """
-        return self.main(noise)
+        y1 = 80
+        y2 = 80+228
+        x1 = 40
+        x2 = 40 + 248
+        s = (428,321)
+        padding = (x1,s[1]-x2,y1,s[0]-y2)
+        
+        out = self.initial_upscaling(noise)
+        out1 = self.card(out)
+        out2 = self.centerbox(out)
+        out2 = pad(out2, padding, mode='constant', value=0)
+        return out1 + out2
 
 
 class Discriminator(nn.Module):

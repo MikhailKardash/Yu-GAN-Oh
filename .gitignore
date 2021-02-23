@@ -131,3 +131,5 @@ ipython_config.py
 .idea/modules.xml
 .idea/vcs.xml
 .idea/Yu-GAN-Oh.iml
+*.pt
+*.txt
